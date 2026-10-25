@@ -1,5 +1,5 @@
 {
-  "title": "Zero Assistant Bridge",
+  "title": "Zero Assistant",
   "config": {
     "step": {
       "user": {
@@ -9,7 +9,9 @@
           "url": "Zero server URL",
           "token": "Voice token",
           "satellite_id": "Authorized voice satellite",
-          "settings_token": "Settings management token"
+          "settings_token": "Settings management token",
+          "callback_url": "Rule callback URL (optional)",
+          "callback_token": "Rule callback token (optional)"
         }
       },
       "reconfigure": {
@@ -19,7 +21,9 @@
           "url": "Zero server URL",
           "token": "Voice token",
           "satellite_id": "Authorized voice satellite",
-          "settings_token": "Settings management token"
+          "settings_token": "Settings management token",
+          "callback_url": "Rule callback URL (optional)",
+          "callback_token": "Rule callback token (optional)"
         }
       }
     },
@@ -33,7 +37,7 @@
   },
   "options": {
     "step": {
-      "init": {
+      "assistant": {
         "title": "Zero prompt and Home Assistant access",
         "description": "Loaded directly from Zero. Saving updates Zero for all owner conversations, including Telegram and Assist. There is no separate HA prompt. Built-in tool and safety instructions remain managed by Zero. Assist and Frigate also require explicit service names below. Disabling access blocks new owner tool calls; existing reminders remain scheduled.",
         "data": {
@@ -43,11 +47,29 @@
           "frigate": "Allow Frigate services",
           "services": "Allowed services (domain.service, one per line)"
         }
+      },
+      "init": {
+        "title": "Zero Assistant",
+        "menu_options": {
+          "assistant": "Prompt and Home Assistant access",
+          "delivery": "Reminder and alert delivery"
+        }
+      },
+      "delivery": {
+        "title": "Reminder and alert delivery",
+        "description": "Callback settings for future events. Existing rules are preserved.",
+        "data": {
+          "callback_url": "Zero callback URL",
+          "callback_token": "Rule callback token"
+        }
       }
     },
     "abort": {
       "cannot_connect": "Cannot confirm Zero settings. No action was retried. Check the connection and reopen Configure to read current settings.",
       "conflict": "Settings changed elsewhere. Reopen Configure before saving."
+    },
+    "error": {
+      "invalid_token": "The callback token must contain at least 24 characters."
     }
   }
 }

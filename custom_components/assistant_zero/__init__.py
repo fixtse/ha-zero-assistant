@@ -10,6 +10,8 @@ CONFIG_SCHEMA = vol.Schema({
         vol.Required("token"): cv.string,
         vol.Required("satellite_id"): cv.entity_id,
         vol.Optional("settings_token"): cv.string,
+        vol.Optional("callback_url"): cv.url,
+        vol.Optional("callback_token"): vol.All(str, vol.Length(min=24)),
     })
 }, extra=vol.ALLOW_EXTRA)
 
@@ -23,9 +25,16 @@ async def async_setup(hass, config):
 
 
 async def async_setup_entry(hass, entry):
+    from .rules import async_setup_rules
+    if entry.data.get("callback_url") and entry.data.get("callback_token"):
+        await async_setup_rules(hass, entry.data)
     await hass.config_entries.async_forward_entry_setups(entry, [Platform.CONVERSATION])
     return True
 
 
 async def async_unload_entry(hass, entry):
+    # Rule listeners belong to this integration; stop before unloading conversation.
+    manager = hass.data.pop("assistant_rules", None)
+    if manager is not None:
+        await manager.stop()
     return await hass.config_entries.async_unload_platforms(entry, [Platform.CONVERSATION])
