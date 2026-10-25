@@ -27,4 +27,4 @@ class PackagingTests(unittest.TestCase):
         query = parse_qs(urlparse(link).query)
         self.assertEqual(query, {"owner": ["fixtse"], "repository": [ROOT.name], "category": ["integration"]})
         self.assertIn("config_flow_start/?domain=" + component.name, readme)
-        self.assertIn("does not support private repositories", readme.replace("\n", " "))
+        self.assertIn("Install through HACS:", readme)

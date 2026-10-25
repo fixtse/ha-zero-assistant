@@ -1,7 +1,7 @@
 {
   "domain": "assistant_zero",
   "name": "Zero Assistant Bridge",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "documentation": "https://github.com/fixtse/ha-zero-assistant",
   "dependencies": [
     "conversation"
