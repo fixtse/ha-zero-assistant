@@ -1,0 +1,53 @@
+{
+  "title": "Zero Assistant Bridge",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Zero",
+        "description": "Connect Home Assistant Assist to the independent Zero assistant. Credentials stay private. Use the dedicated voice and settings tokens, never the administrator API key.",
+        "data": {
+          "url": "Zero server URL",
+          "token": "Voice token",
+          "satellite_id": "Authorized voice satellite",
+          "settings_token": "Settings management token"
+        }
+      },
+      "reconfigure": {
+        "title": "Connect to Zero",
+        "description": "Connect Home Assistant Assist to the independent Zero assistant. Credentials stay private. Use the dedicated voice and settings tokens, never the administrator API key.",
+        "data": {
+          "url": "Zero server URL",
+          "token": "Voice token",
+          "satellite_id": "Authorized voice satellite",
+          "settings_token": "Settings management token"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot read Zero settings. Check the server URL and dedicated settings token."
+    },
+    "abort": {
+      "already_configured": "Zero is already configured.",
+      "reconfigure_successful": "Connection updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Zero prompt and Home Assistant access",
+        "description": "Loaded directly from Zero. Saving updates Zero for all owner conversations, including Telegram and Assist. There is no separate HA prompt. Built-in tool and safety instructions remain managed by Zero. Assist and Frigate also require explicit service names below. Disabling access blocks new owner tool calls; existing reminders remain scheduled.",
+        "data": {
+          "prompt": "Zero identity prompt template",
+          "homeAssistant": "Allow Zero to use Home Assistant tools",
+          "assist": "Allow delegation to Home Assistant Assist",
+          "frigate": "Allow Frigate services",
+          "services": "Allowed services (domain.service, one per line)"
+        }
+      }
+    },
+    "abort": {
+      "cannot_connect": "Cannot confirm Zero settings. No action was retried. Check the connection and reopen Configure to read current settings.",
+      "conflict": "Settings changed elsewhere. Reopen Configure before saving."
+    }
+  }
+}

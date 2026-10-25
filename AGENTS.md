@@ -1,0 +1,1 @@
+Read `/home/fixt/AGENTS.md` when available. Run installation and tests in GitHub Codespaces. Never copy live Home Assistant config, credentials, or storage into this repository. Preserve the integration domain, one-shot delivery behavior, and existing rule/session identities.

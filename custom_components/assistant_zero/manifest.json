@@ -1,0 +1,16 @@
+{
+  "domain": "assistant_zero",
+  "name": "Zero Assistant Bridge",
+  "version": "1.1.0",
+  "documentation": "https://github.com/fixtse/ha-zero-assistant",
+  "dependencies": [
+    "conversation"
+  ],
+  "config_flow": true,
+  "iot_class": "local_push",
+  "codeowners": [
+    "@fixtse"
+  ],
+  "issue_tracker": "https://github.com/fixtse/ha-zero-assistant/issues",
+  "integration_type": "service"
+}
