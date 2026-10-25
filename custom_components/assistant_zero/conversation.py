@@ -1,28 +1,69 @@
 """Route Assist speech to the existing Zero worker, returning speech to Assist TTS."""
-import json
+import logging
+from datetime import timedelta
 import uuid
 
 import aiohttp
 from homeassistant.components import conversation
 from homeassistant.helpers import entity_registry as er, intent
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from . import DOMAIN
 from .client import AccessDenied, BridgeError, converse
+from .catalog import assistants
+from .transport import request as bridge_request, CatalogUnsupported
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    async_add_entities([ZeroConversation(entry)])
+    async def request(method, path, data=None):
+        return await bridge_request(hass, entry.data, method, path, data)
+
+    async def load():
+        try:
+            return await assistants(request)
+        except CatalogUnsupported:
+            return {"zero": {"id": "zero", "name": "Zero", "legacy": True}}
+        except (BridgeError, TimeoutError, aiohttp.ClientError, ValueError, KeyError, TypeError) as error:
+            raise UpdateFailed("Cannot discover Zero assistants") from error
+
+    coordinator = DataUpdateCoordinator(hass, _LOGGER, name="Zero assistant catalog", config_entry=entry,
+        update_method=load, update_interval=timedelta(minutes=1))
+    await coordinator.async_config_entry_first_refresh()
+    added = set()
+
+    def discover():
+        new = [ZeroConversation(entry, key, value["name"], coordinator)
+            for key, value in coordinator.data.items() if key not in added]
+        added.update(entity.assistant_id for entity in new)
+        async_add_entities(new)
+
+    entry.async_on_unload(coordinator.async_add_listener(discover))
+    discover()
 
 
 class ZeroConversation(conversation.ConversationEntity):
     _attr_name = "Zero"
     _attr_supported_features = conversation.ConversationEntityFeature.CONTROL
 
-    def __init__(self, entry):
+    def __init__(self, entry, assistant_id="zero", name="Zero", coordinator=None):
         self._entry = entry
-        self._attr_unique_id = "assistant_zero"
+        self.assistant_id = assistant_id
+        self._coordinator = coordinator
+        self._attr_name = name
+        self._attr_unique_id = "assistant_zero" if assistant_id == "zero" else "assistant_zero_" + assistant_id
+
+    @property
+    def available(self):
+        return self._coordinator is None or (self._coordinator.last_update_success and self.assistant_id in self._coordinator.data)
+
+    def _catalog_updated(self):
+        item = self._coordinator.data.get(self.assistant_id)
+        if item:
+            self._attr_name = item["name"]
+        self.async_write_ha_state()
 
     @property
     def device_info(self):
@@ -39,10 +80,14 @@ class ZeroConversation(conversation.ConversationEntity):
 
     async def async_added_to_hass(self):
         await super().async_added_to_hass()
-        conversation.async_set_agent(self.hass, self._entry, self)
+        if self._coordinator:
+            self.async_on_remove(self._coordinator.async_add_listener(self._catalog_updated))
+        if self.assistant_id == "zero":
+            conversation.async_set_agent(self.hass, self._entry, self)
 
     async def async_will_remove_from_hass(self):
-        conversation.async_unset_agent(self.hass, self._entry)
+        if self.assistant_id == "zero":
+            conversation.async_unset_agent(self.hass, self._entry)
         await super().async_will_remove_from_hass()
 
     async def async_process(self, user_input):
@@ -66,25 +111,10 @@ class ZeroConversation(conversation.ConversationEntity):
             return conversation.ConversationResult(response=response, conversation_id=conversation_id)
 
         async def request(method, path, data):
-            async with async_get_clientsession(self.hass).request(
-                method, settings["url"].rstrip("/") + path,
-                headers={"Authorization": "Bearer " + settings["token"]},
-                json=data, timeout=aiohttp.ClientTimeout(total=15),
-                allow_redirects=False,
-            ) as result:
-                if result.status == 403:
-                    raise AccessDenied("User is not bound to an enabled Zero profile")
-                if result.status not in (200, 202):
-                    raise BridgeError("Bridge unavailable")
-                payload = bytearray()
-                async for chunk in result.content.iter_chunked(16384):
-                    payload.extend(chunk)
-                    if len(payload) > 1_000_000:
-                        raise BridgeError("Response too large")
-                return json.loads(payload)
+            return await bridge_request(self.hass, settings, method, path, data)
 
         try:
-            output = await converse(request, user_input.text, settings["satellite_id"], ha_user_id=user_id)
+            output = await converse(request, user_input.text, settings["satellite_id"], ha_user_id=user_id, assistant_id=None if self._coordinator and self._coordinator.data.get(self.assistant_id, {}).get("legacy") else self.assistant_id)
             response.async_set_speech(output)
         except AccessDenied:
             response.async_set_error(

@@ -11,6 +11,12 @@ JOB = "00000000-0000-4000-8000-000000000001"
 
 
 class VoiceBridgeTests(unittest.IsolatedAsyncioTestCase):
+    async def test_selected_assistant_is_sent_once(self):
+        request = AsyncMock(side_effect=[{"jobId": JOB}, {"status": "done", "output": "Salem reply"}])
+        self.assertEqual(await client.converse(request, "Hi", "assist_satellite.test", assistant_id="salem"), "Salem reply")
+        self.assertEqual(request.call_args_list[0].args[2]["assistant_id"], "salem")
+        self.assertEqual([call.args[0] for call in request.call_args_list], ["POST", "GET"])
+
     async def test_submit_once_then_poll(self):
         request = AsyncMock(side_effect=[{"jobId": JOB}, {"status": "pending"}, {"status": "running"}, {"status": "done", "output": "Hello"}])
         with patch.object(client.asyncio, "sleep", new=AsyncMock()):

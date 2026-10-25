@@ -39,3 +39,9 @@ Existing satellite, entry, pipeline and reminder identities remain unchanged.
 Update both the Zero backend and the HACS integration before configuring bindings.
 
 Pairing requests expire after ten minutes. Tokens travel only between the servers; the browser carries the approval request and callback state. Zero stores the HA token encrypted and its own integration token as a digest. Revoke Zero credentials in `/admin` → Security and HA credentials in the selected HA user’s profile. Failed exchanges are not retried. Existing entries, conversation identities and scheduled rules are unchanged. Guided pairing requires the corresponding Zero server update.
+
+### Multiple assistants
+
+Zero exposes every assistant from its catalog as a separate Home Assistant conversation entity, including Salem and custom assistants. Select the desired agent in an Assist pipeline. The catalog refreshes every minute; adding or renaming an assistant does not replace `conversation.zero`, existing pipelines or rule identities. Removed assistants become unavailable. Prompts stay exclusively in Zero, and every agent uses the authenticated HA user’s existing Zero profile, permissions and memory.
+
+Version 1.5.0 requires the matching Zero server for multiple assistants. Older servers retain the existing Zero agent until upgraded.
