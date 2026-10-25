@@ -5,17 +5,19 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .client import BridgeError
 
 
-async def settings_request(hass, connection, method="GET", value=None):
+async def settings_request(hass, connection, method="GET", value=None, path=""):
     token = connection.get("settings_token")
     if not token:
         raise BridgeError("A dedicated Zero settings token is required")
     async with async_get_clientsession(hass).request(
-        method, connection["url"].rstrip("/") + "/v1/integrations/home-assistant/settings",
+        method, connection["url"].rstrip("/") + "/v1/integrations/home-assistant/settings" + path,
         headers={"Authorization": "Bearer " + token}, json=value,
         timeout=aiohttp.ClientTimeout(total=15), allow_redirects=False,
     ) as response:
         if response.status == 409:
             raise BridgeError("conflict")
+        if response.status == 400:
+            raise BridgeError("invalid_user")
         if response.status != 200:
             raise BridgeError("Cannot access Zero settings")
         payload = bytearray()

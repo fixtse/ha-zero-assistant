@@ -18,6 +18,13 @@ class VoiceBridgeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([c.args[0] for c in request.call_args_list], ["POST", "GET", "GET", "GET"])
         self.assertEqual(request.call_args_list[0].args[2]["satellite_id"], "assist_satellite.test")
 
+    async def test_user_identity_is_preserved_for_submission_and_result(self):
+        user_id = "a" * 32
+        request = AsyncMock(side_effect=[{"jobId": JOB}, {"status": "done", "output": "Personal reply"}])
+        self.assertEqual(await client.converse(request, "Hi", "assist_satellite.test", ha_user_id=user_id), "Personal reply")
+        self.assertEqual(request.call_args_list[0].args[2]["ha_user_id"], user_id)
+        self.assertEqual(request.call_args_list[1].args[1], "/v1/voice/turns/" + JOB + "?ha_user_id=" + user_id)
+
     async def test_uncertain_submission_is_not_retried(self):
         request = AsyncMock(side_effect=TimeoutError())
         with self.assertRaises(TimeoutError):

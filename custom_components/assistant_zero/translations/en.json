@@ -32,8 +32,10 @@
     },
     "abort": {
       "already_configured": "Zero is already configured.",
-      "reconfigure_successful": "Connection updated."
-    }
+      "reconfigure_successful": "Connection updated.",
+      "invalid_discovery": "Zero advertised an invalid server URL. Configure the integration manually."
+    },
+    "flow_title": "{name}"
   },
   "options": {
     "step": {
@@ -52,7 +54,8 @@
         "title": "Zero Assistant",
         "menu_options": {
           "assistant": "Prompt and Home Assistant access",
-          "delivery": "Reminder and alert delivery"
+          "delivery": "Reminder and alert delivery",
+          "users": "Home Assistant user bindings"
         }
       },
       "delivery": {
@@ -62,14 +65,24 @@
           "callback_url": "Zero callback URL",
           "callback_token": "Rule callback token"
         }
+      },
+      "users": {
+        "title": "Bind Home Assistant users to Zero users",
+        "description": "Select a Home Assistant user and enter the private Zero user chat ID shown in Zero’s admin page. The profile must be enabled. Its permissions, memory and conversation history also apply to Assist and Android. Current bindings appear beside user names. Leave the chat ID empty to remove a binding. Each save changes only the selected user. Zero stores the bindings; Home Assistant does not cache them.",
+        "data": {
+          "user_id": "Home Assistant user",
+          "chat_id": "Zero user chat ID (empty to unlink)"
+        }
       }
     },
     "abort": {
       "cannot_connect": "Cannot confirm Zero settings. No action was retried. Check the connection and reopen Configure to read current settings.",
-      "conflict": "Settings changed elsewhere. Reopen Configure before saving."
+      "conflict": "Settings changed elsewhere. Reopen Configure before saving.",
+      "no_users": "No active Home Assistant users are available."
     },
     "error": {
-      "invalid_token": "The callback token must contain at least 24 characters."
+      "invalid_token": "The callback token must contain at least 24 characters.",
+      "invalid_user": "Choose an active Home Assistant user and an enabled private Zero user chat ID."
     }
   }
 }

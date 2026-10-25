@@ -17,3 +17,23 @@ Install through HACS:
 Configure the Zero server URL, voice token, settings token, and satellite. Under **Configure**, edit Zero’s shared prompt and Home Assistant permissions, including Assist and Frigate service access. Reminder callback settings are in the same integration.
 
 Requires Home Assistant 2026.3 or newer. HACS must already be installed.
+
+## Android and Home Assistant user identity
+
+In **Settings → Devices & services → Zero Assistant → Configure → Home Assistant
+user bindings**, select your Home Assistant account and enter its enabled private
+Zero user chat ID from Zero's `/admin` page. This includes administrator accounts:
+a phone's device ID does not identify a Zero user. Save once per user; current
+bindings appear beside the Home Assistant user names. Leave the chat ID empty to
+unlink that user. Zero stores and validates bindings centrally, with revision
+checks to prevent overwriting concurrent edits.
+
+Authenticated Assist requests use the bound Zero profile's permissions,
+credentials, memory and ordered conversation history, shared with that profile's
+Telegram chat. Unbound/inactive users and disabled or removed Zero profiles cannot
+submit turns or retrieve results. Binding one HA account to another Zero account
+shares that Zero account's conversation; select the intended personal profile.
+The configured physical satellite retains its existing owner route when no HA
+user identity is supplied. Other devices without an authenticated user are denied.
+Existing satellite, entry, pipeline and reminder identities remain unchanged.
+Update both the Zero backend and the HACS integration before configuring bindings.
