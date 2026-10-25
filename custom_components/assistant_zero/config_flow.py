@@ -3,7 +3,7 @@ import aiohttp
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
-from homeassistant.helpers import config_validation as cv, selector
+from homeassistant.helpers import selector
 from . import DOMAIN
 from .client import BridgeError
 from .settings import settings_request
@@ -11,10 +11,10 @@ from .settings import settings_request
 
 def connection_schema():
     return vol.Schema({
-        vol.Required("url"): cv.url,
+        vol.Required("url"): selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.URL)),
         vol.Required("token"): selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)),
         vol.Required("satellite_id"): selector.EntitySelector(selector.EntitySelectorConfig(domain="assist_satellite")),
-        vol.Optional("callback_url"): cv.url,
+        vol.Optional("callback_url"): selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.URL)),
         vol.Optional("callback_token"): selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)),
         vol.Required("settings_token"): selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)),
     })
@@ -83,7 +83,7 @@ class ZeroOptionsFlow(config_entries.OptionsFlow):
 
     def _delivery_schema(self):
         return vol.Schema({
-            vol.Required("callback_url", default=self.config_entry.data.get("callback_url", "")): cv.url,
+            vol.Required("callback_url", default=self.config_entry.data.get("callback_url", "")): selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.URL)),
             vol.Required("callback_token"): selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)),
         })
 
