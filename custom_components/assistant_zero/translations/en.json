@@ -3,15 +3,14 @@
   "config": {
     "step": {
       "user": {
-        "title": "Connect to Zero",
-        "description": "Connect Home Assistant Assist to the independent Zero assistant. Credentials stay private. Use the dedicated voice and settings tokens, never the administrator API key.",
+        "title": "Connect the discovered Zero instance",
+        "description": "Home Assistant starts the connection. Select the HA user whose long-lived token Zero may use, then approve the request in Zero. Both credentials and callbacks are configured automatically. Choose a Home Assistant URL reachable by Zero and your browser. Existing permissions and schedules are preserved.",
         "data": {
           "url": "Zero server URL",
-          "token": "Voice token",
-          "satellite_id": "Authorized voice satellite",
-          "settings_token": "Settings management token",
-          "callback_url": "Rule callback URL (optional)",
-          "callback_token": "Rule callback token (optional)"
+          "home_assistant_url": "Home Assistant URL",
+          "user_id": "Home Assistant user for Zero",
+          "satellite_id": "Voice satellite",
+          "manual": "Use manual tokens instead"
         }
       },
       "reconfigure": {
@@ -25,15 +24,33 @@
           "callback_url": "Rule callback URL (optional)",
           "callback_token": "Rule callback token (optional)"
         }
+      },
+      "manual": {
+        "title": "Connect to Zero",
+        "description": "Connect Home Assistant Assist to the independent Zero assistant. Credentials stay private. Use the dedicated voice and settings tokens, never the administrator API key.",
+        "data": {
+          "url": "Zero server URL",
+          "token": "Voice token",
+          "satellite_id": "Authorized voice satellite",
+          "settings_token": "Settings management token",
+          "callback_url": "Rule callback URL (optional)",
+          "callback_token": "Rule callback token (optional)"
+        }
+      },
+      "pair": {
+        "title": "Approve the connection in Zero",
+        "description": "Sign in to Zero, verify your Home Assistant address and select the Zero profile to link. Return here after approval."
       }
     },
     "error": {
-      "cannot_connect": "Cannot read Zero settings. Check the server URL and dedicated settings token."
+      "cannot_connect": "Cannot read Zero settings. Check the server URL and dedicated settings token.",
+      "pairing_failed": "Could not start pairing. Check both server URLs. No operation was retried."
     },
     "abort": {
       "already_configured": "Zero is already configured.",
       "reconfigure_successful": "Connection updated.",
-      "invalid_discovery": "Zero advertised an invalid server URL. Configure the integration manually."
+      "invalid_discovery": "Zero advertised an invalid server URL. Configure the integration manually.",
+      "pairing_failed": "Could not confirm pairing. No operation was retried. Inspect Zero connections and Home Assistant profile tokens before starting another setup."
     },
     "flow_title": "{name}"
   },
@@ -68,7 +85,7 @@
       },
       "users": {
         "title": "Bind Home Assistant users to Zero users",
-        "description": "Select a Home Assistant user and enter the private Zero user chat ID shown in Zero’s admin page. The profile must be enabled. Its permissions, memory and conversation history also apply to Assist and Android. Current bindings appear beside user names. Leave the chat ID empty to remove a binding. Each save changes only the selected user. Zero stores the bindings; Home Assistant does not cache them.",
+        "description": "Select a Home Assistant user and enter the private Zero user chat ID shown in Zero\u2019s admin page. The profile must be enabled. Its permissions, memory and conversation history also apply to Assist and Android. Current bindings appear beside user names. Leave the chat ID empty to remove a binding. Each save changes only the selected user. Zero stores the bindings; Home Assistant does not cache them.",
         "data": {
           "user_id": "Home Assistant user",
           "chat_id": "Zero user chat ID (empty to unlink)"

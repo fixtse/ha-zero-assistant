@@ -1,5 +1,9 @@
 """Optional HA client for Zero; prompt and access policy remain owned by Zero."""
 import aiohttp
+import secrets
+import re
+from homeassistant.helpers.network import get_url, NoURLAvailableError
+from .pairing import zero_request, create_ha_token, register_callback, pairing_secret
 import voluptuous as vol
 from yarl import URL
 from homeassistant import config_entries
@@ -55,6 +59,82 @@ class ZeroConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input=None):
         errors = {}
         if user_input is not None:
+            if user_input.get("manual"):
+                self._discovered_url = user_input["url"]
+                return await self.async_step_manual()
+            try:
+                if any(not user_input.get(key) for key in ("home_assistant_url", "user_id", "satellite_id")):
+                    raise ValueError("Complete the guided connection fields")
+                url = URL(user_input["url"])
+                ha_url = URL(user_input["home_assistant_url"])
+                for candidate in (url, ha_url):
+                    if candidate.scheme not in ("http", "https") or not candidate.host or candidate.user or candidate.password or candidate.query_string or candidate.fragment or candidate.path not in ("", "/"):
+                        raise ValueError("Invalid server origin")
+                user = await self.hass.auth.async_get_user(user_input["user_id"])
+                if not user or not user.is_active or user.system_generated:
+                    raise ValueError("Invalid user")
+                self._connection = {"url": str(url).rstrip("/"), "satellite_id": user_input["satellite_id"]}
+                self._ha_user_id = user.id
+                self._pairing_secret = pairing_secret()
+                self._pairing_state = pairing_secret()
+                self._pairing = await zero_request(self.hass, self._connection["url"], "/v1/pairing/home-assistant", {
+                    "secret": self._pairing_secret, "state": self._pairing_state,
+                    "homeAssistantUrl": str(ha_url.origin()), "flowId": self.flow_id, "userId": user.id,
+                })
+                approval = URL(self._pairing["approvalUrl"])
+                if approval.origin() != url.origin() or approval.path != "/admin/":
+                    raise ValueError("Invalid approval destination")
+                register_callback(self.hass)
+                return await self.async_step_pair()
+            except (aiohttp.ClientError, TimeoutError, ValueError, KeyError):
+                errors["base"] = "pairing_failed"
+        try:
+            ha_url = get_url(self.hass, allow_external=False)
+        except NoURLAvailableError:
+            ha_url = ""
+        users = [user for user in await self.hass.auth.async_get_users() if user.is_active and not user.system_generated]
+        schema = vol.Schema({
+            vol.Required("url", default=getattr(self, "_discovered_url", "")): selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.URL)),
+            vol.Optional("home_assistant_url", default=ha_url): selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.URL)),
+            vol.Optional("user_id"): selector.SelectSelector(selector.SelectSelectorConfig(options=[{"value": user.id, "label": user.name or user.id} for user in users], mode=selector.SelectSelectorMode.DROPDOWN)),
+            vol.Optional("satellite_id"): selector.EntitySelector(selector.EntitySelectorConfig(domain="assist_satellite")),
+            vol.Optional("manual", default=False): bool,
+        })
+        return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
+
+    async def async_step_pair(self, user_input=None):
+        if user_input is not None:
+            if not re.fullmatch(r"[a-f0-9]{64}", str(user_input.get("state", ""))) or not secrets.compare_digest(str(user_input["state"]), self._pairing_state):
+                raise ValueError("Invalid pairing state")
+            if getattr(self, "_pairing_approved", False):
+                raise ValueError("Pairing callback already consumed")
+            self._pairing_approved = True
+            return self.async_external_step_done(next_step_id="finish_pairing")
+        return self.async_external_step(step_id="pair", url=self._pairing["approvalUrl"])
+
+    async def async_step_finish_pairing(self, user_input=None):
+        if not getattr(self, "_pairing_approved", False) or getattr(self, "_pairing_consumed", False):
+            return self.async_abort(reason="pairing_failed")
+        self._pairing_consumed = True
+        refresh = None
+        try:
+            await self.async_set_unique_id(DOMAIN)
+            self._abort_if_unique_id_configured()
+            refresh, token = await create_ha_token(self.hass, self._ha_user_id, self.flow_id)
+            credentials = await zero_request(self.hass, self._connection["url"], "/v1/pairing/home-assistant/exchange", {
+                "id": self._pairing["id"], "secret": self._pairing_secret, "homeAssistantToken": token,
+            })
+            connection = {**self._connection, **{key: credentials[key] for key in ("token", "settings_token", "callback_token", "callback_url")}}
+            return self.async_create_entry(title="Zero", data=connection)
+        except (aiohttp.ClientError, TimeoutError, ValueError, KeyError):
+            if refresh is not None:
+                self.hass.auth.async_remove_refresh_token(refresh)
+            return self.async_abort(reason="pairing_failed")
+
+    async def async_step_manual(self, user_input=None):
+
+        errors = {}
+        if user_input is not None:
             try:
                 await settings_request(self.hass, user_input)
             except (BridgeError, aiohttp.ClientError, TimeoutError, ValueError, KeyError):
@@ -63,7 +143,7 @@ class ZeroConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 await self.async_set_unique_id(DOMAIN)
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(title="Zero", data=user_input)
-        return self.async_show_form(step_id="user", data_schema=connection_schema(getattr(self, "_discovered_url", None)), errors=errors)
+        return self.async_show_form(step_id="manual", data_schema=connection_schema(getattr(self, "_discovered_url", None)), errors=errors)
 
     async def async_step_reconfigure(self, user_input=None):
         errors = {}
