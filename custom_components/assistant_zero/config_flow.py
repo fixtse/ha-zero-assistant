@@ -215,23 +215,39 @@ class ZeroOptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_assistant(self, user_input=None):
         errors = {}
+        available = self.hass.services.async_services()
+        frigate_available = bool(available.get("frigate"))
         try:
             if user_input is not None:
                 value = {**user_input, "revision": self._revision}
-                value["services"] = [line.strip() for line in value["services"].splitlines() if line.strip()]
+                raw = value.get("services", [])
+                # Accept older clients too; split comma-separated custom values.
+                if isinstance(raw, str):
+                    raw = raw.splitlines()
+                value["services"] = list(dict.fromkeys(
+                    service.strip() for item in raw for service in item.split(",") if service.strip()
+                ))
+                if value.get("assist") and "conversation.process" not in value["services"]:
+                    value["services"].append("conversation.process")
+                value["frigate"] = value.get("frigate", self._current_frigate) if frigate_available else self._current_frigate
                 await settings_request(self.hass, self.config_entry.data, "PUT", value)
                 # No prompt or policy snapshot is stored in config entry options.
                 return self.async_create_entry(title="", data={})
             current = await settings_request(self.hass, self.config_entry.data)
             self._revision = current["revision"]
+            self._current_frigate = current["frigate"]
         except (BridgeError, aiohttp.ClientError, TimeoutError, ValueError, KeyError) as error:
             # A failed write is never repeated. Reopen to fetch the current revision.
             return self.async_abort(reason="conflict" if str(error) == "conflict" else "cannot_connect")
-        schema = vol.Schema({
+        services = sorted({f"{domain}.{service}" for domain, entries in available.items() for service in entries} | set(current["services"]))
+        fields = {
             vol.Required("prompt", default=current["prompt"]): selector.TextSelector(selector.TextSelectorConfig(multiline=True)),
             vol.Required("homeAssistant", default=current["homeAssistant"]): bool,
             vol.Required("assist", default=current["assist"]): bool,
-            vol.Required("frigate", default=current["frigate"]): bool,
-            vol.Required("services", default="\n".join(current["services"])): selector.TextSelector(selector.TextSelectorConfig(multiline=True)),
-        })
-        return self.async_show_form(step_id="assistant", data_schema=schema, errors=errors)
+        }
+        if frigate_available:
+            fields[vol.Required("frigate", default=current["frigate"])] = bool
+        fields[vol.Required("services", default=current["services"])] = selector.SelectSelector(
+            selector.SelectSelectorConfig(options=services, multiple=True, custom_value=True, mode=selector.SelectSelectorMode.DROPDOWN)
+        )
+        return self.async_show_form(step_id="assistant", data_schema=vol.Schema(fields), errors=errors)

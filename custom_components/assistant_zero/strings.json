@@ -58,7 +58,7 @@
     "step": {
       "assistant": {
         "title": "Zero prompt and Home Assistant access",
-        "description": "Loaded directly from Zero. Saving updates Zero for all owner conversations, including Telegram and Assist. There is no separate HA prompt. Built-in tool and safety instructions remain managed by Zero. Assist and Frigate also require explicit service names below. Disabling access blocks new owner tool calls; existing reminders remain scheduled.",
+        "description": "Loaded directly from Zero. Saving updates Zero for all owner conversations, including Telegram and Assist. There is no separate HA prompt. Built-in tool and safety instructions remain managed by Zero. Assist delegation automatically allows conversation.process. Select allowed services or add custom domain.service values; comma-separated values are split when saved. Frigate is shown only when its services are available in Home Assistant. Disabling access blocks new owner tool calls; existing reminders remain scheduled.",
         "data": {
           "prompt": "Zero identity prompt template",
           "homeAssistant": "Allow Zero to use Home Assistant tools",
