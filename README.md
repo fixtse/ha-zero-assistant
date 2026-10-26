@@ -50,3 +50,18 @@ Shared permissions use a searchable multi-select service list with custom values
 Assist delegation automatically allows `conversation.process`. Frigate is offered
 only when Home Assistant has registered `frigate.*` services. Comma-separated
 custom service values are split when saved.
+
+## Local Zero account recovery
+
+Zero prefers Telegram recovery when available. For a local Zero admin account with an
+existing verified Home Assistant account link and no Telegram destination, version 1.5.2
+resolves all current Companion App devices assigned to that user's person under
+**Settings → People**. There is no device enrollment code or mobile recovery setup screen.
+Changing the person's devices affects the next recovery request automatically. Recovery
+codes are still required to reset the Zero password. This does not reset HA credentials.
+
+The authenticated user's private recovery commands resolve notification actions from HA
+registry identities and the active mobile notification map. Every matching destination
+is attempted once; an uncertain send is not retried. No notifications are sent during
+startup or upgrade. Accounts without a linked HA user or Telegram destination require
+Zero's console password reset.
