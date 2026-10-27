@@ -16,7 +16,7 @@ async def assistants(request):
             if not isinstance(value, dict):
                 raise BridgeError("Invalid assistant metadata")
             key, name = value.get("id"), value.get("name")
-            if not isinstance(key, str) or not re.fullmatch(r"zero|salem|standard|[a-f0-9-]{36}", key) or key in items:
+            if not isinstance(key, str) or not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,99}", key) or key in items:
                 raise BridgeError("Invalid or repeated assistant identity")
             if not isinstance(name, str) or not 1 <= len(name) <= 100:
                 raise BridgeError("Invalid assistant name")

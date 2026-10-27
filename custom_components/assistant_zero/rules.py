@@ -5,6 +5,7 @@ import asyncio
 from copy import deepcopy
 from datetime import datetime, timezone
 import logging
+import math
 from uuid import UUID
 
 import aiohttp
@@ -22,6 +23,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .engine import RuleEngine, sensor_match
+from .location import location_entities, location_match
 
 DOMAIN = "assistant_rules"
 _LOGGER = logging.getLogger(__name__)
@@ -29,7 +31,16 @@ CONFIG_SCHEMA = vol.Schema({DOMAIN: vol.Schema({vol.Required("callback_url"): cv
 SENSOR_CONDITION = vol.Schema({vol.Optional("source"): "sensor", vol.Required("entity_id"): vol.Match(r"^(sensor|binary_sensor)\.[a-z0-9_]+$"), vol.Required("operator"): vol.In(["equals", "above", "below"]), vol.Required("value"): vol.Any(str, int, float), vol.Required("hold_seconds"): vol.All(int, vol.Range(min=0, max=86400))})
 WEATHER_CONDITIONS = ["clear-night", "cloudy", "fog", "hail", "lightning", "lightning-rainy", "partlycloudy", "pouring", "rainy", "snowy", "snowy-rainy", "sunny", "windy", "windy-variant", "exceptional"]
 WEATHER_CONDITION = vol.Schema({vol.Optional("hourly_updates"): bool,vol.Optional("sleep_entity"): vol.Match(r"^input_boolean\.[a-z0-9_]+$"),vol.Optional("mode"): vol.In(["any_change", "conditions", "rain"]), vol.Optional("conditions"): vol.All([vol.In(WEATHER_CONDITIONS)], vol.Length(max=15)),vol.Required("source"): "weather", vol.Required("entity_id"): vol.Match(r"^weather\.[a-z0-9_]+$"), vol.Required("horizon_hours"): vol.All(int, vol.Range(min=1, max=168)), vol.Required("minimum_probability"): vol.All(vol.Coerce(float), vol.Range(min=0, max=100))})
-RULE_SCHEMA = vol.Schema({vol.Optional("last_fired", default=None): vol.Any(None, cv.datetime), vol.Required("id"): str, vol.Required("generation"): vol.All(int, vol.Range(min=0)), vol.Required("kind"): vol.In(["reminder", "timer", "alert"]), vol.Required("status"): vol.In(["active", "paused", "cancelled", "completed", "expired"]), vol.Required("next_at"): vol.Any(None, cv.datetime), vol.Required("repeat_seconds"): vol.Any(None, vol.All(int, vol.Range(min=60, max=31536000))), vol.Required("condition"): vol.Any(None, SENSOR_CONDITION, WEATHER_CONDITION), vol.Required("cooldown_seconds"): vol.All(int, vol.Range(min=0, max=31536000)), vol.Required("recurring"): bool})
+def finite_location_number(value):
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        raise vol.Invalid('Expected a finite location number')
+    return value
+
+
+LOCATION_FIELDS = {vol.Required('entity_id'): vol.Match(r'^person\.[a-z0-9_]+$'), vol.Required('target_entity_id'): str, vol.Required('hold_seconds'): vol.All(int, vol.Range(min=0, max=86400)), vol.Required('reset_margin_m'): vol.All(finite_location_number, vol.Range(min=0, max=10000)), vol.Required('max_age_seconds'): vol.All(int, vol.Range(min=60, max=86400)), vol.Required('max_accuracy_m'): vol.All(finite_location_number, vol.Range(min=0.001, max=10000))}
+ZONE_CONDITION = vol.Schema({**LOCATION_FIELDS, vol.Required('source'): 'zone', vol.Required('target_entity_id'): vol.Match(r'^zone\.[a-z0-9_]+$'), vol.Required('operator'): vol.In(['enter', 'leave'])})
+DISTANCE_CONDITION = vol.Schema({**LOCATION_FIELDS, vol.Required('source'): 'distance', vol.Required('target_entity_id'): vol.Match(r'^person\.[a-z0-9_]+$'), vol.Required('operator'): vol.In(['above', 'below']), vol.Required('distance_m'): vol.All(finite_location_number, vol.Range(min=0.001, max=40075000))})
+RULE_SCHEMA = vol.Schema({vol.Optional("last_fired", default=None): vol.Any(None, cv.datetime), vol.Required("id"): str, vol.Required("generation"): vol.All(int, vol.Range(min=0)), vol.Required("kind"): vol.In(["reminder", "timer", "alert"]), vol.Required("status"): vol.In(["active", "paused", "cancelled", "completed", "expired"]), vol.Required("next_at"): vol.Any(None, cv.datetime), vol.Required("repeat_seconds"): vol.Any(None, vol.All(int, vol.Range(min=60, max=31536000))), vol.Required("condition"): vol.Any(None, SENSOR_CONDITION, WEATHER_CONDITION, ZONE_CONDITION, DISTANCE_CONDITION), vol.Required("cooldown_seconds"): vol.All(int, vol.Range(min=0, max=31536000)), vol.Required("recurring"): bool})
 
 
 class Manager:
@@ -43,7 +54,7 @@ class Manager:
         def read_state(entity):
             state = hass.states.get(entity)
             return state.state if state else None
-        self.engine = RuleEngine(lambda: dt_util.utcnow().timestamp(), self.persist, self.schedule, self.emit, read_state)
+        self.engine = RuleEngine(lambda: dt_util.utcnow().timestamp(), self.persist, self.schedule, self.emit, read_state, lambda condition, latched: location_match(condition, hass.states.get, dt_util.utcnow().timestamp(), latched))
 
     async def persist(self, rules):
         await self.store.async_save({"rules": rules})
@@ -137,6 +148,16 @@ class Manager:
             self.listeners[rule_id] = unsubscribe
             # Each forecast type seeds its own baseline without replaying old changes.
             await entity.async_update_listeners(types)
+        elif condition.get('source') in ('zone', 'distance'):
+            @callback
+            def changed(event):
+                # Capture this event before queuing: rapid crossings must retain order.
+                observed_at = dt_util.utcnow().timestamp()
+                snapshot = {entity: event.data.get('new_state') if entity == event.data.get('entity_id') else self.hass.states.get(entity) for entity in location_entities(condition)}
+                reading = lambda latched: location_match(condition, snapshot.get, observed_at, latched)
+                self.task(self.dispatch(rule_id, self.engine.sensor(rule_id, generation, reading)))
+            self.listeners[rule_id] = async_track_state_change_event(self.hass, location_entities(condition), changed)
+            await self.dispatch(rule_id, self.engine.sensor(rule_id, generation, None))
         else:
             @callback
             def changed(event):
@@ -160,6 +181,11 @@ class Manager:
                 entity = self.hass.data[DATA_COMPONENT].get_entity(condition["entity_id"])
                 if entity is None or not (entity.supported_features or 0) & WeatherEntityFeature.FORECAST_DAILY:
                     raise ValueError("Configured weather entity must support daily forecasts")
+            elif condition.get('source') in ('zone', 'distance'):
+                if condition['entity_id'] == condition['target_entity_id']:
+                    raise ValueError('Choose two different people')
+                if value['status'] == 'active' and any(self.hass.states.get(entity) is None for entity in location_entities(condition)):
+                    raise ValueError('Configured person or zone does not exist')
             elif condition["operator"] != "equals" and (isinstance(condition["value"], bool) or not isinstance(condition["value"], (int, float))):
                 raise ValueError("Numeric threshold requires a number")
         elif value["next_at"] is None:
@@ -196,7 +222,7 @@ class RulesView(HomeAssistantView):
 
     async def get(self, request, rule_id=None):
         if not rule_id:
-            return self.json({"protocol": 2, "ready": self.manager.ready, "hourly_updates": True})
+            return self.json({"protocol": 2, "ready": self.manager.ready, "hourly_updates": True, "location_alerts": True})
         rule = self.manager.engine.rules.get(rule_id)
         if not rule or rule["owner"] != request["hass_user"].id:
             return self.json({"error": "Rule not found"}, status_code=404)

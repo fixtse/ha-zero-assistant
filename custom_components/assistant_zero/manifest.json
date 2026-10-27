@@ -1,22 +1,13 @@
 {
   "domain": "assistant_zero",
   "name": "Zero Assistant",
-  "version": "1.5.2",
+  "version": "1.6.0",
   "documentation": "https://github.com/fixtse/ha-zero-assistant",
-  "dependencies": [
-    "conversation",
-    "http",
-    "websocket_api",
-    "weather"
-  ],
+  "dependencies": ["conversation", "http", "websocket_api", "weather"],
   "config_flow": true,
   "iot_class": "local_push",
-  "codeowners": [
-    "@fixtse"
-  ],
+  "codeowners": ["@fixtse"],
   "issue_tracker": "https://github.com/fixtse/ha-zero-assistant/issues",
   "integration_type": "service",
-  "zeroconf": [
-    "_zero-assistant._tcp.local."
-  ]
+  "zeroconf": ["_zero-assistant._tcp.local."]
 }

@@ -107,9 +107,10 @@ def forecast_matches(forecast, previous, condition, now):
 
 
 class RuleEngine:
-    def __init__(self, now, persist, schedule, emit, read_state=None):
+    def __init__(self, now, persist, schedule, emit, read_state=None, read_condition=None):
         self.now, self.persist, self.schedule, self.emit = now, persist, schedule, emit
         self.read_state = read_state
+        self.read_condition = read_condition
         self.rules = {}
         self.timers = {}
         self.lock = asyncio.Lock()
@@ -141,6 +142,8 @@ class RuleEngine:
                     rule["last_event"]["outcome"] = "uncertain"
                 # A restart breaks proof of a continuous sensor hold. Do not replay it.
                 rule["hold_until"] = None
+                if (rule.get('condition') or {}).get('source') in ('zone', 'distance'):
+                    rule['location_baseline'] = True
                 if rule["status"] == "active" and rule["kind"] != "alert" and timestamp(rule["next_at"]) <= self.now():
                     self.advance(rule, expired=True)
                 self.arm(rule)
@@ -164,6 +167,8 @@ class RuleEngine:
                     return deepcopy(old)
                 raise ValueError("Stale rule generation")
             rule = {**deepcopy(value), "owner": owner, "hold_until": None, "latched": False, "last_fired": value.get("last_fired"), "forecast_signature": None, "last_hourly_fired": old.get("last_hourly_fired") if old else None}
+            if (rule.get('condition') or {}).get('source') in ('zone', 'distance'):
+                rule['location_baseline'] = True
             self.rules[rule["id"]] = rule
             if rule["status"] == "active" and rule["kind"] != "alert" and timestamp(rule["next_at"]) <= self.now():
                 self.advance(rule, expired=True)
@@ -211,6 +216,13 @@ class RuleEngine:
                 rule["last_event"]["outcome"] = outcome
                 await self.save()
 
+    def matches(self, rule, state=None):
+        if rule['condition'].get('source') in ('zone', 'distance'):
+            if callable(state):
+                return state(rule.get('latched', False))
+            return self.read_condition(rule['condition'], rule.get('latched', False)) if self.read_condition else None
+        return sensor_match(rule['condition'], state)
+
     async def deadline(self, rule_id, generation):
         event = None
         async with self.lock:
@@ -225,7 +237,7 @@ class RuleEngine:
                     rule["hold_until"] = None
                 else:
                     self.advance(rule, expired=True)
-            elif rule["kind"] == "alert" and self.read_state is not None and sensor_match(rule["condition"], self.read_state(rule["condition"]["entity_id"])) is not True:
+            elif rule["kind"] == "alert" and (self.read_state is not None or self.read_condition is not None) and self.matches(rule, self.read_state(rule["condition"]["entity_id"]) if self.read_state else None) is not True:
                 rule["hold_until"] = None
             else:
                 event = self.fire(rule)
@@ -240,7 +252,15 @@ class RuleEngine:
             if not rule:
                 return
             before = deepcopy(rule)
-            matches = sensor_match(rule["condition"], state)
+            matches = self.matches(rule, state)
+            if rule.get('location_baseline'):
+                # Creation/resume/restart establish a baseline; never replay an arrival.
+                rule['latched'] = matches is not False
+                if matches is not None:
+                    rule['location_baseline'] = False
+                if before != rule:
+                    await self.save()
+                return
             if matches is not True:
                 rule["hold_until"] = None
                 if matches is False:

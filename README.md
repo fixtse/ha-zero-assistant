@@ -65,3 +65,13 @@ registry identities and the active mobile notification map. Every matching desti
 is attempted once; an uncertain send is not retried. No notifications are sent during
 startup or upgrade. Accounts without a linked HA user or Telegram destination require
 Zero's console password reset.
+
+## Location alerts
+
+Zero can request zone entry/exit and straight-line distance alerts between people.
+Only active alerts subscribe to the selected HA entities; there is no polling or
+AI call for monitoring or fixed-message delivery. Both entities must be allowed by
+the requesting Zero profile. Creation, resume and restart seed a baseline without
+replaying arrivals. Invalid, stale or inaccurate locations break holds without
+rearming; recurring distance alerts use a reset margin to reduce GPS jitter.
+Phone background location reporting determines detection latency.
