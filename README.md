@@ -14,7 +14,7 @@ Install through HACS:
 
 [![Set up integration](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=assistant_zero)
 
-Start with the Zero instance discovered in **Settings → Devices & services**. Confirm the server URLs, choose the Home Assistant user and satellite, then sign in to Zero and approve the connection for an enabled private Zero profile. The configuration flow generates and exchanges both long-lived credentials automatically; no token copying is required. Manual token setup remains available. Under **Configure**, edit Zero’s shared prompt and Home Assistant permissions, including Assist and Frigate service access. Reminder callback settings are in the same integration.
+Start with the Zero instance discovered in **Settings → Devices & services**. Confirm the server URLs, choose the Home Assistant user, then sign in to Zero and approve the connection for an enabled private Zero profile. The configuration flow generates and exchanges both long-lived credentials automatically; no token copying is required. Manual token setup remains available. Under **Configure**, edit Zero’s shared prompt and Home Assistant permissions, including Assist and Frigate service access. Reminder callback settings are in the same integration.
 
 Requires Home Assistant 2026.3 or newer. HACS must already be installed.
 
@@ -75,3 +75,14 @@ the requesting Zero profile. Creation, resume and restart seed a baseline withou
 replaying arrivals. Invalid, stale or inaccurate locations break holds without
 rearming; recurring distance alerts use a reset margin to reduce GPS jitter.
 Phone background location reporting determines detection latency.
+
+Setup and reconfiguration do not ask for a voice satellite. Existing stored
+satellite identities remain valid; authenticated Assist/Android users keep their
+private bindings. An unconfigured satellite never permits anonymous-device access.
+Setup reports missing fields, connectivity, HTTP rejection and a different Zero
+public approval origin separately, without automatic retries.
+
+Approve an enabled private user or group in Zero. Group pairing changes only that
+group's HA connection, leaving private user bindings untouched. Profiles belonging
+to other assistant accounts retain their assistant, permissions and history. The
+approval picker supports search and pagination independently of the Users page.

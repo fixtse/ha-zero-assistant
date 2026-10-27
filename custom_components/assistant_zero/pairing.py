@@ -8,10 +8,17 @@ from homeassistant.components.http import KEY_HASS
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 
+class PairingResponseError(ValueError):
+    """A bounded HTTP status, without server bodies, credentials or retry behavior."""
+    def __init__(self, status):
+        self.status = status
+        super().__init__("Pairing could not be confirmed; no automatic retry")
+
+
 async def zero_request(hass, url, path, value):
     async with async_get_clientsession(hass).post(url.rstrip("/") + path, json=value, timeout=15, allow_redirects=False) as response:
         if response.status not in (200, 201):
-            raise ValueError("Pairing could not be confirmed; no automatic retry")
+            raise PairingResponseError(response.status)
         return await response.json()
 
 

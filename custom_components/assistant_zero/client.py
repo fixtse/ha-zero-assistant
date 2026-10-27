@@ -11,14 +11,16 @@ class AccessDenied(BridgeError):
     """Zero rejected the authenticated user or device before submission."""
 
 
-async def converse(request, text, satellite_id, timeout=290, ha_user_id=None, assistant_id=None):
+async def converse(request, text, satellite_id=None, timeout=290, ha_user_id=None, assistant_id=None):
     identity = {"ha_user_id": ha_user_id} if ha_user_id else {}
+    if satellite_id:
+        identity["satellite_id"] = satellite_id
     if assistant_id is not None:
         identity["assistant_id"] = assistant_id
     query = "?ha_user_id=" + ha_user_id if ha_user_id else ""
     async with asyncio.timeout(timeout):
         accepted = await request("POST", "/v1/voice/turns", {
-            "request_id": str(uuid.uuid4()), "text": text, "satellite_id": satellite_id, **identity,
+            "request_id": str(uuid.uuid4()), "text": text, **identity,
         })
         job_id = str(uuid.UUID(accepted["jobId"]))
         while True:

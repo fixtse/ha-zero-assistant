@@ -8,7 +8,7 @@ CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
         vol.Required("url"): cv.url,
         vol.Required("token"): cv.string,
-        vol.Required("satellite_id"): cv.entity_id,
+        vol.Optional("satellite_id"): cv.entity_id,
         vol.Optional("settings_token"): cv.string,
         vol.Optional("callback_url"): cv.url,
         vol.Optional("callback_token"): vol.All(str, vol.Length(min=24)),

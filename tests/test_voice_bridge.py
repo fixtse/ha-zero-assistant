@@ -12,9 +12,9 @@ JOB = "00000000-0000-4000-8000-000000000001"
 
 class VoiceBridgeTests(unittest.IsolatedAsyncioTestCase):
     async def test_selected_assistant_is_sent_once(self):
-        request = AsyncMock(side_effect=[{"jobId": JOB}, {"status": "done", "output": "Salem reply"}])
-        self.assertEqual(await client.converse(request, "Hi", "assist_satellite.test", assistant_id="salem"), "Salem reply")
-        self.assertEqual(request.call_args_list[0].args[2]["assistant_id"], "salem")
+        request = AsyncMock(side_effect=[{"jobId": JOB}, {"status": "done", "output": "Helper reply"}])
+        self.assertEqual(await client.converse(request, "Hi", "assist_satellite.test", assistant_id="helper"), "Helper reply")
+        self.assertEqual(request.call_args_list[0].args[2]["assistant_id"], "helper")
         self.assertEqual([call.args[0] for call in request.call_args_list], ["POST", "GET"])
 
     async def test_submit_once_then_poll(self):
@@ -48,3 +48,9 @@ class VoiceBridgeTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(TimeoutError):
             await client.converse(request, "Action", "assist_satellite.test", timeout=0.02)
         self.assertEqual(request.await_count, 2)
+
+    async def test_authenticated_user_needs_no_satellite(self):
+        request = AsyncMock(side_effect=[{"jobId": JOB}, {"status": "done", "output": "Personal reply"}])
+        self.assertEqual(await client.converse(request, "Hi", ha_user_id="a" * 32), "Personal reply")
+        self.assertNotIn("satellite_id", request.call_args_list[0].args[2])
+        self.assertEqual(request.call_args_list[0].args[2]["ha_user_id"], "a" * 32)

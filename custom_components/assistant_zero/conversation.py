@@ -94,7 +94,8 @@ class ZeroConversation(conversation.ConversationEntity):
         response = intent.IntentResponse(language=user_input.language)
         conversation_id = user_input.conversation_id or str(uuid.uuid4())
         settings = self._entry.data
-        satellite = er.async_get(self.hass).async_get(settings["satellite_id"])
+        satellite_id = settings.get("satellite_id")
+        satellite = er.async_get(self.hass).async_get(satellite_id) if satellite_id else None
         # HA authenticates the user; Zero resolves the binding and permissions.
         # A device-only satellite retains the legacy owner route.
         user_id = user_input.context.user_id
@@ -114,7 +115,7 @@ class ZeroConversation(conversation.ConversationEntity):
             return await bridge_request(self.hass, settings, method, path, data)
 
         try:
-            output = await converse(request, user_input.text, settings["satellite_id"], ha_user_id=user_id, assistant_id=None if self._coordinator and self._coordinator.data.get(self.assistant_id, {}).get("legacy") else self.assistant_id)
+            output = await converse(request, user_input.text, satellite_id, ha_user_id=user_id, assistant_id=None if self._coordinator and self._coordinator.data.get(self.assistant_id, {}).get("legacy") else self.assistant_id)
             response.async_set_speech(output)
         except AccessDenied:
             response.async_set_error(

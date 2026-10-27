@@ -4,22 +4,20 @@
     "step": {
       "user": {
         "title": "Connect the discovered Zero instance",
-        "description": "Home Assistant starts the connection. Select the HA user whose long-lived token Zero may use, then approve the request in Zero. Both credentials and callbacks are configured automatically. Choose a Home Assistant URL reachable by Zero and your browser. Existing permissions and schedules are preserved.",
+        "description": "Home Assistant starts the connection. Select the HA user whose long-lived token Zero may use, then approve a Zero user or group in Zero. Both credentials and callbacks are configured automatically. Choose a Home Assistant URL reachable by Zero and your browser. Data, reminders and alerts need no physical voice device. Existing permissions and schedules are preserved.",
         "data": {
           "url": "Zero server URL",
           "home_assistant_url": "Home Assistant URL",
           "user_id": "Home Assistant user for Zero",
-          "satellite_id": "Voice satellite",
           "manual": "Use manual tokens instead"
         }
       },
       "reconfigure": {
         "title": "Connect to Zero",
-        "description": "Connect Home Assistant Assist to the independent Zero assistant. Credentials stay private. Use the dedicated voice and settings tokens, never the administrator API key.",
+        "description": "Connect to Zero with dedicated voice and settings tokens, never the administrator API key. Data, reminders and alerts need no physical voice device. Credentials stay private.",
         "data": {
           "url": "Zero server URL",
           "token": "Voice token",
-          "satellite_id": "Authorized voice satellite",
           "settings_token": "Settings management token",
           "callback_url": "Rule callback URL (optional)",
           "callback_token": "Rule callback token (optional)"
@@ -27,11 +25,10 @@
       },
       "manual": {
         "title": "Connect to Zero",
-        "description": "Connect Home Assistant Assist to the independent Zero assistant. Credentials stay private. Use the dedicated voice and settings tokens, never the administrator API key.",
+        "description": "Connect to Zero with dedicated voice and settings tokens, never the administrator API key. Data, reminders and alerts need no physical voice device. Credentials stay private.",
         "data": {
           "url": "Zero server URL",
           "token": "Voice token",
-          "satellite_id": "Authorized voice satellite",
           "settings_token": "Settings management token",
           "callback_url": "Rule callback URL (optional)",
           "callback_token": "Rule callback token (optional)"
@@ -39,12 +36,17 @@
       },
       "pair": {
         "title": "Approve the connection in Zero",
-        "description": "Sign in to Zero, verify your Home Assistant address and select the Zero profile to link. Return here after approval."
+        "description": "Sign in to Zero, verify your Home Assistant address and select the enabled Zero user or group to connect. Group connections do not change private voice-user bindings. Return here after approval."
       }
     },
     "error": {
       "cannot_connect": "Cannot read Zero settings. Check the server URL and dedicated settings token.",
-      "pairing_failed": "Could not start pairing. Check both server URLs. No operation was retried."
+      "pairing_failed": "Could not start pairing. Check both server URLs. No operation was retried.",
+      "pairing_fields": "Choose an active Home Assistant user and complete both server origin URLs (http/https, without paths).",
+      "pairing_unreachable": "Home Assistant could not reach Zero. Check DNS, TLS and the Zero server URL from this HA server. No operation was retried.",
+      "pairing_rejected": "Zero rejected the pairing request. Verify this is the Zero server URL and that the server supports guided pairing; check the HA log for the HTTP status. No operation was retried.",
+      "approval_mismatch": "Zero returned an approval link on a different server origin. Use the public Zero URL configured by Zero. No operation was retried.",
+      "pairing_response": "Zero returned an invalid pairing response. Verify the Zero server URL points to Zero rather than Home Assistant or a proxy login page. No operation was retried."
     },
     "abort": {
       "already_configured": "Zero is already configured.",

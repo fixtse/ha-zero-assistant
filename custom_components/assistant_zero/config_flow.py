@@ -1,9 +1,10 @@
 """Optional HA client for Zero; prompt and access policy remain owned by Zero."""
 import aiohttp
+import logging
 import secrets
 import re
 from homeassistant.helpers.network import get_url, NoURLAvailableError
-from .pairing import zero_request, create_ha_token, register_callback, pairing_secret
+from .pairing import zero_request, create_ha_token, register_callback, pairing_secret, PairingResponseError
 import voluptuous as vol
 from yarl import URL
 from homeassistant import config_entries
@@ -14,11 +15,13 @@ from .client import BridgeError
 from .settings import settings_request
 
 
+_LOGGER = logging.getLogger(__name__)
+
+
 def connection_schema(discovered_url=None):
     return vol.Schema({
         vol.Required("url", **({"default": discovered_url} if discovered_url else {})): selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.URL)),
         vol.Required("token"): selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)),
-        vol.Required("satellite_id"): selector.EntitySelector(selector.EntitySelectorConfig(domain="assist_satellite")),
         vol.Optional("callback_url"): selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.URL)),
         vol.Optional("callback_token"): selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)),
         vol.Required("settings_token"): selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)),
@@ -62,8 +65,9 @@ class ZeroConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if user_input.get("manual"):
                 self._discovered_url = user_input["url"]
                 return await self.async_step_manual()
+            starting = False
             try:
-                if any(not user_input.get(key) for key in ("home_assistant_url", "user_id", "satellite_id")):
+                if any(not user_input.get(key) for key in ("home_assistant_url", "user_id")):
                     raise ValueError("Complete the guided connection fields")
                 url = URL(user_input["url"])
                 ha_url = URL(user_input["home_assistant_url"])
@@ -73,21 +77,30 @@ class ZeroConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 user = await self.hass.auth.async_get_user(user_input["user_id"])
                 if not user or not user.is_active or user.system_generated:
                     raise ValueError("Invalid user")
-                self._connection = {"url": str(url).rstrip("/"), "satellite_id": user_input["satellite_id"]}
+                self._connection = {"url": str(url).rstrip("/")}
                 self._ha_user_id = user.id
                 self._pairing_secret = pairing_secret()
                 self._pairing_state = pairing_secret()
+                starting = True
                 self._pairing = await zero_request(self.hass, self._connection["url"], "/v1/pairing/home-assistant", {
                     "secret": self._pairing_secret, "state": self._pairing_state,
                     "homeAssistantUrl": str(ha_url.origin()), "flowId": self.flow_id, "userId": user.id,
                 })
                 approval = URL(self._pairing["approvalUrl"])
                 if approval.origin() != url.origin() or approval.path != "/admin/":
+                    errors["base"] = "approval_mismatch"
                     raise ValueError("Invalid approval destination")
                 register_callback(self.hass)
                 return await self.async_step_pair()
-            except (aiohttp.ClientError, TimeoutError, ValueError, KeyError):
-                errors["base"] = "pairing_failed"
+            except PairingResponseError as error:
+                _LOGGER.warning("Zero pairing start rejected (HTTP %s); no automatic retry", error.status)
+                errors["base"] = "pairing_rejected"
+            except aiohttp.ContentTypeError:
+                errors["base"] = "pairing_response"
+            except (aiohttp.ClientError, TimeoutError):
+                errors["base"] = "pairing_unreachable"
+            except (ValueError, KeyError):
+                errors.setdefault("base", "pairing_response" if starting else "pairing_fields")
         try:
             ha_url = get_url(self.hass, allow_external=False)
         except NoURLAvailableError:
@@ -97,7 +110,6 @@ class ZeroConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required("url", default=getattr(self, "_discovered_url", "")): selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.URL)),
             vol.Optional("home_assistant_url", default=ha_url): selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.URL)),
             vol.Optional("user_id"): selector.SelectSelector(selector.SelectSelectorConfig(options=[{"value": user.id, "label": user.name or user.id} for user in users], mode=selector.SelectSelectorMode.DROPDOWN)),
-            vol.Optional("satellite_id"): selector.EntitySelector(selector.EntitySelectorConfig(domain="assist_satellite")),
             vol.Optional("manual", default=False): bool,
         })
         return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
