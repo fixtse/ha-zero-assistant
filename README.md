@@ -86,3 +86,24 @@ Approve an enabled private user or group in Zero. Group pairing changes only tha
 group's HA connection, leaving private user bindings untouched. Profiles belonging
 to other assistant accounts retain their assistant, permissions and history. The
 approval picker supports search and pagination independently of the Users page.
+
+## Public callback relay (1.7.0)
+
+With an external HTTPS Home Assistant URL, the integration can relay Telegram
+webhooks and rule callbacks to Zero without exposing Zero publicly. It announces
+`/api/assistant_zero/relay/ENTRY_ID` to Zero; Zero only fills an empty public
+connection URL. A saved custom URL is never overwritten. Review existing webhook
+registrations after changing addresses.
+
+Google OAuth returns through Home Assistant and redirects the browser to Zero's
+admin address, where its original browser cookie and one-use state are checked.
+The browser must be able to reach that address. Register the redirect URI shown
+by Zero in Google's console. The relay does not expose administration endpoints.
+
+Each delivery checks the integration credential with Zero. Revoking that access
+blocks the relay; unloading the integration removes its destination. Only the
+fixed Telegram, rule callback and Google callback routes are allowed. Request
+bodies are bounded, upstream redirects are blocked and uncertain POSTs are never
+retried. An internal-only URL or a standalone cloudhook cannot provide the public
+HTTPS route required for this feature. If announcement fails, configure the URL
+manually; the integration logs a bounded warning without retrying the write.

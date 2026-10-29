@@ -27,6 +27,8 @@ async def async_setup(hass, config):
 
 
 async def async_setup_entry(hass, entry):
+    from .relay import async_setup_relay
+    await async_setup_relay(hass, entry)
     from .rules import async_setup_rules
     if entry.data.get("callback_url") and entry.data.get("callback_token"):
         await async_setup_rules(hass, entry.data)
@@ -35,6 +37,8 @@ async def async_setup_entry(hass, entry):
 
 
 async def async_unload_entry(hass, entry):
+    from .relay import async_unload_relay
+    async_unload_relay(hass, entry)
     # Rule listeners belong to this integration; stop before unloading conversation.
     manager = hass.data.pop("assistant_rules", None)
     if manager is not None:

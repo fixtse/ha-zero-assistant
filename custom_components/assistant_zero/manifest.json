@@ -1,7 +1,7 @@
 {
   "domain": "assistant_zero",
   "name": "Zero Assistant",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "documentation": "https://github.com/fixtse/ha-zero-assistant",
   "dependencies": ["conversation", "http", "websocket_api", "weather"],
   "config_flow": true,
