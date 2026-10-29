@@ -37,9 +37,9 @@ def finite_location_number(value):
     return value
 
 
-LOCATION_FIELDS = {vol.Required('entity_id'): vol.Match(r'^person\.[a-z0-9_]+$'), vol.Required('target_entity_id'): str, vol.Required('hold_seconds'): vol.All(int, vol.Range(min=0, max=86400)), vol.Required('reset_margin_m'): vol.All(finite_location_number, vol.Range(min=0, max=10000)), vol.Required('max_age_seconds'): vol.All(int, vol.Range(min=60, max=86400)), vol.Required('max_accuracy_m'): vol.All(finite_location_number, vol.Range(min=0.001, max=10000))}
+LOCATION_FIELDS = {vol.Required('entity_id'): vol.Match(r'^(person|device_tracker)\.[a-z0-9_]+$'), vol.Required('target_entity_id'): str, vol.Required('hold_seconds'): vol.All(int, vol.Range(min=0, max=86400)), vol.Required('reset_margin_m'): vol.All(finite_location_number, vol.Range(min=0, max=10000)), vol.Required('max_age_seconds'): vol.All(int, vol.Range(min=60, max=86400)), vol.Required('max_accuracy_m'): vol.All(finite_location_number, vol.Range(min=0.001, max=10000))}
 ZONE_CONDITION = vol.Schema({**LOCATION_FIELDS, vol.Required('source'): 'zone', vol.Required('target_entity_id'): vol.Match(r'^zone\.[a-z0-9_]+$'), vol.Required('operator'): vol.In(['enter', 'leave'])})
-DISTANCE_CONDITION = vol.Schema({**LOCATION_FIELDS, vol.Required('source'): 'distance', vol.Required('target_entity_id'): vol.Match(r'^person\.[a-z0-9_]+$'), vol.Required('operator'): vol.In(['above', 'below']), vol.Required('distance_m'): vol.All(finite_location_number, vol.Range(min=0.001, max=40075000))})
+DISTANCE_CONDITION = vol.Schema({**LOCATION_FIELDS, vol.Required('source'): 'distance', vol.Required('target_entity_id'): vol.Match(r'^(person|device_tracker)\.[a-z0-9_]+$'), vol.Required('operator'): vol.In(['above', 'below']), vol.Required('distance_m'): vol.All(finite_location_number, vol.Range(min=0.001, max=40075000))})
 RULE_SCHEMA = vol.Schema({vol.Optional("last_fired", default=None): vol.Any(None, cv.datetime), vol.Required("id"): str, vol.Required("generation"): vol.All(int, vol.Range(min=0)), vol.Required("kind"): vol.In(["reminder", "timer", "alert"]), vol.Required("status"): vol.In(["active", "paused", "cancelled", "completed", "expired"]), vol.Required("next_at"): vol.Any(None, cv.datetime), vol.Required("repeat_seconds"): vol.Any(None, vol.All(int, vol.Range(min=60, max=31536000))), vol.Required("condition"): vol.Any(None, SENSOR_CONDITION, WEATHER_CONDITION, ZONE_CONDITION, DISTANCE_CONDITION), vol.Required("cooldown_seconds"): vol.All(int, vol.Range(min=0, max=31536000)), vol.Required("recurring"): bool})
 
 
@@ -222,7 +222,7 @@ class RulesView(HomeAssistantView):
 
     async def get(self, request, rule_id=None):
         if not rule_id:
-            return self.json({"protocol": 2, "ready": self.manager.ready, "hourly_updates": True, "location_alerts": True})
+            return self.json({"protocol": 2, "ready": self.manager.ready, "hourly_updates": True, "location_alerts": True, "device_tracker_location_alerts": True})
         rule = self.manager.engine.rules.get(rule_id)
         if not rule or rule["owner"] != request["hass_user"].id:
             return self.json({"error": "Rule not found"}, status_code=404)

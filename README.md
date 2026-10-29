@@ -107,3 +107,14 @@ bodies are bounded, upstream redirects are blocked and uncertain POSTs are never
 retried. An internal-only URL or a standalone cloudhook cannot provide the public
 HTTPS route required for this feature. If announcement fails, configure the URL
 manually; the integration logs a bounded warning without retrying the write.
+
+## GPS entities (1.8.0)
+
+Location and zone alerts accept both `person.*` and `device_tracker.*` with GPS
+coordinates. Mixed pairs are supported. Zero automatically uses the location
+entity saved in the private profile for “me”; no separate person entity is needed.
+Entity permissions, GPS freshness/accuracy, crossing baselines, hysteresis and
+one-shot delivery behavior still apply. Address sensors without coordinates are
+not supported. Zero checks the integration's tracker-alert capability before
+installing a tracker rule; existing identities, storage and rule generations are
+preserved.

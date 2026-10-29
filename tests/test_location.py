@@ -131,3 +131,21 @@ class LocationTests(unittest.IsolatedAsyncioTestCase):
     def test_metres_and_antimeridian(self):
         self.assertAlmostEqual(location.distance_m((0, 0), (0, 1)), 111195, delta=1)
         self.assertAlmostEqual(location.distance_m((0, 179.99), (0, -179.99)), 2223.9, delta=1)
+
+    async def test_gps_tracker_and_person_mixed_distance_and_zone(self):
+        for first, second in [('device_tracker.a', 'person.b'), ('person.a', 'device_tracker.b'), ('device_tracker.a', 'device_tracker.b')]:
+            condition = {**self.condition, 'entity_id': first, 'target_entity_id': second, 'distance_m': 300}
+            self.set_state(first, 0, 0, gps_accuracy=5)
+            self.set_state(second, 0, .001, gps_accuracy=5)
+            self.assertTrue(location.location_match(condition, self.states.get, self.now))
+            self.states[second].last_reported = datetime.fromtimestamp(self.now - 4000, timezone.utc)
+            self.assertIsNone(location.location_match(condition, self.states.get, self.now))
+            self.set_state(second, 0, .001, gps_accuracy=500)
+            self.assertIsNone(location.location_match(condition, self.states.get, self.now))
+            self.set_state(second, 0, .001, gps_accuracy=5)
+            self.states[second].attributes.pop('latitude')
+            self.assertIsNone(location.location_match(condition, self.states.get, self.now))
+        self.set_state('device_tracker.a', 0, 0)
+        self.set_state('zone.home', 0, 0, radius=100)
+        zone = {**self.condition, 'source': 'zone', 'entity_id': 'device_tracker.a', 'target_entity_id': 'zone.home', 'operator': 'enter'}
+        self.assertTrue(location.location_match(zone, self.states.get, self.now))
