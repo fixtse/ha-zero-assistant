@@ -160,6 +160,22 @@ class EngineTests(unittest.IsolatedAsyncioTestCase):
         await self.engine.weather('test-rule', 0, forecast)
         self.assertEqual(len(self.events), 2)
 
+    async def test_weather_cooldown_keeps_changes_until_a_later_identical_forecast_update(self):
+        await self.weather_rule(mode='any_change')
+        forecast = self.forecast(temperature=15)
+        await self.engine.weather('test-rule', 0, forecast)
+        forecast[0]['temperature'] = 16.1
+        await self.engine.weather('test-rule', 0, forecast)
+        self.assertEqual(len(self.events), 1)
+        forecast[0]['temperature'] = 17.2
+        await self.engine.weather('test-rule', 0, forecast)
+        self.assertEqual(len(self.events), 1)
+        await self.advance(60)
+        await self.engine.weather('test-rule', 0, forecast)
+        self.assertEqual(len(self.events), 2)
+        self.assertEqual(self.events[-1]['weather']['changes'][0]['before']['temperature'], 16.1)
+        self.assertEqual(self.events[-1]['weather']['changes'][0]['after']['temperature'], 17.2)
+
     async def test_failed_callback_is_not_replayed_on_restart(self):
         async def fail(_event):
             raise TimeoutError()
@@ -371,7 +387,7 @@ class EngineTests(unittest.IsolatedAsyncioTestCase):
         await self.engine.weather('test-rule', 1, hourly, None, 'hourly')
         self.assertNotIn('hourly_forecast_signature', self.engine.rules['test-rule'])
 
-    async def test_hourly_sleep_and_cooldown_suppress_without_replaying(self):
+    async def test_hourly_sleep_does_not_replay_but_cooldown_retains_unreported_changes(self):
         self.states['input_boolean.dormir'] = 'off'
         await self.weather_rule(mode='any_change', hourly_updates=True, sleep_entity='input_boolean.dormir')
         hourly = self.forecast()
@@ -390,7 +406,11 @@ class EngineTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.events), 1)
         await self.advance(60)
         await self.engine.weather('test-rule', 0, hourly, None, 'hourly')
-        self.assertEqual(len(self.events), 1)
+        self.assertEqual(len(self.events), 2)
+        self.assertEqual(self.events[-1]['weather']['changes'][0]['before']['condition'], 'snowy')
+        self.assertEqual(self.events[-1]['weather']['changes'][0]['after']['condition'], 'hail')
+        await self.engine.weather('test-rule', 0, hourly, None, 'hourly')
+        self.assertEqual(len(self.events), 2)
 
     async def test_hourly_evidence_keeps_later_event_hours_and_bounds_callback_size(self):
         condition = {'entity_id': 'weather.home', 'horizon_hours': 168, '_forecast_type': 'hourly'}

@@ -78,14 +78,26 @@ class LocationTests(unittest.IsolatedAsyncioTestCase):
         await self.feed(.02)
         self.assertEqual(len(self.events), 1)
 
-    async def test_hold_rechecks_stale_gps_at_deadline(self):
+    async def test_distance_hold_accepts_unchanged_gps_at_deadline(self):
         self.condition.update(hold_seconds=90, max_age_seconds=60)
         await self.put()
         await self.feed(.02)
         self.assertTrue(self.pending)
         await self.advance(90)
-        self.assertEqual(self.events, [])
+        self.assertEqual(len(self.events), 1)
         self.assertFalse(self.pending)
+
+    async def test_distance_crossing_with_stationary_old_location(self):
+        self.states['person.a'].last_reported = datetime.fromtimestamp(self.now - 172800, timezone.utc)
+        await self.put()
+        await self.feed(.02)
+        self.assertEqual(len(self.events), 1)
+
+    async def test_zone_still_rejects_old_location(self):
+        self.set_state('zone.home', 0, 0, radius=100)
+        self.states['person.a'].last_reported = datetime.fromtimestamp(self.now - 4000, timezone.utc)
+        condition = {**self.condition, 'source': 'zone', 'target_entity_id': 'zone.home', 'operator': 'enter'}
+        self.assertIsNone(location.location_match(condition, self.states.get, self.now))
 
     async def test_invalid_gps_never_rearms(self):
         await self.put()
@@ -139,7 +151,9 @@ class LocationTests(unittest.IsolatedAsyncioTestCase):
             self.set_state(second, 0, .001, gps_accuracy=5)
             self.assertTrue(location.location_match(condition, self.states.get, self.now))
             self.states[second].last_reported = datetime.fromtimestamp(self.now - 4000, timezone.utc)
-            self.assertIsNone(location.location_match(condition, self.states.get, self.now))
+            self.assertTrue(location.location_match(condition, self.states.get, self.now))
+            self.states[second].last_reported = None
+            self.assertTrue(location.location_match(condition, self.states.get, self.now))
             self.set_state(second, 0, .001, gps_accuracy=500)
             self.assertIsNone(location.location_match(condition, self.states.get, self.now))
             self.set_state(second, 0, .001, gps_accuracy=5)

@@ -304,7 +304,6 @@ class RuleEngine:
             previous = rule.get(signature_key)
             if previous == signature:
                 return
-            rule[signature_key] = signature
             cooled = not rule.get(fired_key) or self.now() - timestamp(rule[fired_key]) >= rule["cooldown_seconds"]
             if previous is not None and cooled and not self.muted(rule) and forecast_matches(forecast, json.loads(previous), condition, self.now()):
                 evidence = weather_change(forecast, json.loads(previous), condition, self.now(), units)
@@ -316,6 +315,10 @@ class RuleEngine:
                         rule["last_fired"] = daily_fired
                     event['weather'] = evidence
                     rule['last_event']['weather'] = deepcopy(evidence)
+            # Keep changes received during cooldown for the next forecast update.
+            # Outside cooldown preserve the existing baseline and one-shot delivery policy.
+            if previous is None or self.muted(rule) or cooled:
+                rule[signature_key] = signature
             await self.save()
         await self.deliver(event)
 
