@@ -19,6 +19,8 @@ CONFIG_SCHEMA = vol.Schema({
 async def async_setup(hass, config):
     from .recovery import async_setup_recovery
     async_setup_recovery(hass)
+    from .exposure import async_setup_exposure
+    async_setup_exposure(hass)
     if DOMAIN in config:
         hass.async_create_task(hass.config_entries.flow.async_init(
             DOMAIN, context={"source": "import"}, data=config[DOMAIN]

@@ -14,7 +14,7 @@ Install through HACS:
 
 [![Set up integration](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=assistant_zero)
 
-Start with the Zero instance discovered in **Settings → Devices & services**. Confirm the server URLs, choose the Home Assistant user, then sign in to Zero and approve the connection for an enabled private Zero profile. The configuration flow generates and exchanges both long-lived credentials automatically; no token copying is required. Manual token setup remains available. Under **Configure**, edit Zero’s shared prompt and Home Assistant permissions, including Assist and Frigate service access. Reminder callback settings are in the same integration.
+Start with the Zero instance discovered in **Settings → Devices & services**. Confirm the server URLs, choose the Home Assistant user, then sign in to Zero and approve the connection for an enabled private Zero profile. The configuration flow generates and exchanges both long-lived credentials automatically; no token copying is required. Manual token setup remains available. Under **Configure**, edit Zero’s shared prompt and Home Assistant permissions, using the same entity exposure settings as Assist. Reminder callback settings are in the same integration.
 
 Requires Home Assistant 2026.3 or newer. HACS must already be installed.
 
@@ -46,10 +46,9 @@ Zero exposes every assistant from its catalog as a separate Home Assistant conve
 
 Version 1.5.0 requires the matching Zero server for multiple assistants. Older servers retain the existing Zero agent until upgraded.
 
-Shared permissions use a searchable multi-select service list with custom values.
-Assist delegation automatically allows `conversation.process`. Frigate is offered
-only when Home Assistant has registered `frigate.*` services. Comma-separated
-custom service values are split when saved.
+Starting with version 1.9.0, manage available entities in **Settings → Voice assistants → Expose**, selecting **Assist**. Zero uses Home Assistant’s effective exposure decision directly, including default exposure and per-entity overrides. There is no second service list or separate Assist/Frigate service permission switch. The shared prompt and Home Assistant access switch remain under **Configure**.
+
+Zero discovers exposed entities and their actions on demand. Reads and actions recheck current exposure and the connected Home Assistant user's permissions. Actions require explicit entity IDs or an exposed named script. Area/device/all targets and untargeted administrative services are unavailable. Existing specialized profile tools retain their configured scopes. Version 1.9.0 requires the matching Zero server; update both packages together. Installation into a running Home Assistant instance remains a separate upgrade step.
 
 ## Local Zero account recovery
 
