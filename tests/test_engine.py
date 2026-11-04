@@ -12,6 +12,37 @@ RuleEngine, iso = module.RuleEngine, module.iso
 
 
 class EngineTests(unittest.IsolatedAsyncioTestCase):
+    def test_numeric_equality_ignores_sensor_number_format(self):
+        for expected, states in [(0, ['0', '0.0', '0.00', '-0.0', '0e2']),
+                                 (12.5, ['12.5', '12.500', '1.25e1']),
+                                 (-10, ['-10', '-10.0'])]:
+            for state in states:
+                with self.subTest(expected=expected, state=state):
+                    self.assertTrue(module.sensor_match({'operator': 'equals', 'value': expected}, state))
+        self.assertFalse(module.sensor_match({'operator': 'equals', 'value': 0}, '0.01'))
+        self.assertFalse(module.sensor_match({'operator': 'equals', 'value': 9007199254740992}, '9007199254740993'))
+
+    def test_numeric_equality_rejects_invalid_and_nonfinite_states(self):
+        for state in [None, '', 'unknown', 'unavailable', 'on', 'NaN', 'Infinity', '-inf']:
+            with self.subTest(state=state):
+                self.assertIsNone(module.sensor_match({'operator': 'equals', 'value': 0}, state))
+
+    def test_text_equality_remains_exact(self):
+        self.assertTrue(module.sensor_match({'operator': 'equals', 'value': 'on'}, 'on'))
+        self.assertFalse(module.sensor_match({'operator': 'equals', 'value': 'on'}, 'off'))
+        self.assertFalse(module.sensor_match({'operator': 'equals', 'value': '0'}, '0.0'))
+
+    async def test_numeric_zero_reset_fires_once(self):
+        value = self.sensor()
+        value['condition'].update(operator='equals', value=0, hold_seconds=0)
+        await self.engine.put('owner', value)
+        await self.feed('99.0')
+        self.assertEqual(self.events, [])
+        await self.feed('0.0')
+        await self.feed('0.00')
+        self.assertEqual(len(self.events), 1)
+        self.assertEqual(self.saved['test-rule']['status'], 'completed')
+
     async def asyncSetUp(self):
         self.now = 1792152000.0
         self.saved, self.events, self.pending, self.states = {}, [], {}, {}

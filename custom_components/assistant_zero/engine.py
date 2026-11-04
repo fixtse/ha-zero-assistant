@@ -6,6 +6,7 @@ from copy import deepcopy
 from datetime import datetime, timezone
 import json
 import math
+from decimal import Decimal, InvalidOperation
 from uuid import uuid4
 
 FORECAST_FIELDS = ('condition', 'temperature', 'templow', 'apparent_temperature', 'dew_point', 'precipitation', 'precipitation_probability', 'wind_speed', 'wind_gust_speed', 'wind_bearing', 'humidity', 'pressure', 'cloud_coverage', 'uv_index')
@@ -48,8 +49,17 @@ def iso(value):
 def sensor_match(condition, state):
     if state is None or str(state).strip().lower() in ("", "unknown", "unavailable"):
         return None
-    if condition["operator"] == "equals":
+    if condition["operator"] == "equals" and type(condition["value"]) not in (int, float):
         return str(state) == str(condition["value"])
+    if condition["operator"] == "equals":
+        try:
+            number = Decimal(str(state))
+            expected = Decimal(str(condition["value"]))
+        except InvalidOperation:
+            return None
+        if not number.is_finite() or not expected.is_finite():
+            return None
+        return number == expected
     try:
         number = float(state)
     except (ValueError, TypeError):
