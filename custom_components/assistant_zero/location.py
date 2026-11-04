@@ -19,12 +19,15 @@ def coordinates(state, now, condition, person=True):
     if not number(lat) or not number(lon) or abs(lat) > 90 or abs(lon) > 180:
         return None
     if person:
-        reported = getattr(state, 'last_reported', None) or getattr(state, 'last_updated', None)
-        if not isinstance(reported, datetime):
-            return None
-        age = now - reported.timestamp()
-        if age < -30 or age > condition['max_age_seconds']:
-            return None
+        # Stationary trackers may retain their coordinates indefinitely. Distance
+        # alerts use those last known positions, including throughout a hold.
+        if condition['source'] != 'distance':
+            reported = getattr(state, 'last_reported', None) or getattr(state, 'last_updated', None)
+            if not isinstance(reported, datetime):
+                return None
+            age = now - reported.timestamp()
+            if age < -30 or age > condition['max_age_seconds']:
+                return None
         accuracy = attributes.get('gps_accuracy')
         if accuracy is not None and (not number(accuracy) or accuracy < 0 or accuracy > condition['max_accuracy_m']):
             return None

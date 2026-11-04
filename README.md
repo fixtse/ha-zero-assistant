@@ -48,7 +48,7 @@ Version 1.5.0 requires the matching Zero server for multiple assistants. Older s
 
 Starting with version 1.9.0, manage available entities in **Settings → Voice assistants → Expose**, selecting **Assist**. Zero uses Home Assistant’s effective exposure decision directly, including default exposure and per-entity overrides. There is no second service list or separate Assist/Frigate service permission switch. The shared prompt and Home Assistant access switch remain under **Configure**.
 
-Zero discovers exposed entities and their actions on demand. Reads and actions recheck current exposure and the connected Home Assistant user's permissions. Actions require explicit entity IDs or an exposed named script. Area/device/all targets and untargeted administrative services are unavailable. Existing specialized profile tools retain their configured scopes. Version 1.9.0 requires the matching Zero server; update both packages together. Installation into a running Home Assistant instance remains a separate upgrade step.
+Zero discovers exposed entities and their actions on demand. Reads and actions recheck current exposure and the connected Home Assistant user's permissions. Actions require explicit entity IDs or an exposed named script. Area/device/all targets and untargeted administrative services are unavailable. Sensor, history, location, distance, shopping, weather and Home Assistant to-do tools also follow Assist exposure. Profiles have no separate sensor/location allowlist. Assignments identify preferred sources. When a location or address is not exposed, Zero asks for confirmation to expose it to Assist across the entire HA instance before saving. This requires an HA administrator. Removing an assignment never unexposes the entity globally. Retired list values are kept privately only to preserve scheduler identities. Alerts validate exposure at installation and before delivery; morning state triggers check before enqueueing a briefing. Requires the matching Zero server and integration 1.10.0. Version 1.9.0 requires the matching Zero server; update both packages together. Installation into a running Home Assistant instance remains a separate upgrade step.
 
 ## Local Zero account recovery
 
@@ -117,3 +117,5 @@ one-shot delivery behavior still apply. Address sensors without coordinates are
 not supported. Zero checks the integration's tracker-alert capability before
 installing a tracker rule; existing identities, storage and rule generations are
 preserved.
+
+Distance alerts use last known coordinates regardless of report age, including during a hold, because stationary trackers may not send new reports. Zone alerts continue to require recent location reports. Missing, unavailable or inaccurate coordinates still invalidate location conditions.

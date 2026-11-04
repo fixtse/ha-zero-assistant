@@ -4,7 +4,7 @@ import re
 import voluptuous as vol
 from homeassistant.auth.permissions.const import POLICY_CONTROL, POLICY_READ
 from homeassistant.components import websocket_api
-from homeassistant.components.homeassistant.exposed_entities import async_should_expose
+from homeassistant.components.homeassistant.exposed_entities import async_should_expose, async_set_assistant_option
 from homeassistant.core import Context
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.service import async_get_all_descriptions
@@ -157,6 +157,53 @@ async def _call(hass, connection, msg):
         connection.send_error(msg["id"], "assist_action_failed", "Action rejected or completion uncertain; inspect before retrying")
 
 
+@websocket_api.websocket_command({
+    vol.Required("type"): "assistant_zero/assist/check",
+    vol.Required("entity_ids"): vol.All([vol.Match(ENTITY)], vol.Length(min=1, max=100)),
+    vol.Optional("control", default=False): bool,
+    vol.Optional("assignment", default=False): bool,
+})
+@websocket_api.async_response
+async def _check(hass, connection, msg):
+    policy = POLICY_CONTROL if msg["control"] else POLICY_READ
+    connection.send_result(msg["id"], [entity_id for entity_id in dict.fromkeys(msg["entity_ids"])
+                                      if permitted(hass, connection.user, entity_id, policy)
+                                      or (msg.get("assignment", False) and not msg["control"] and connection.user is not None
+                                          and connection.user.is_admin and connection.user.is_active and not connection.user.system_generated
+                                          and re.fullmatch(r"(person|device_tracker|sensor)\.[a-z0-9_]+", entity_id)
+                                          and hass.states.get(entity_id) is not None
+                                          and connection.user.permissions.check_entity(entity_id, POLICY_READ))])
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "assistant_zero/assist/expose_locations",
+    vol.Required("entity_ids"): vol.All([vol.Match(r"^(person|device_tracker|sensor)\.[a-z0-9_]+$")], vol.Length(min=1, max=20)),
+    vol.Optional("confirmed", default=False): bool,
+})
+@websocket_api.async_response
+async def _expose_locations(hass, connection, msg):
+    user = connection.user
+    ids = list(dict.fromkeys(msg["entity_ids"]))
+    if (user is None or not user.is_active or user.system_generated
+            or any(hass.states.get(entity) is None or not user.permissions.check_entity(entity, POLICY_READ) for entity in ids)):
+        connection.send_error(msg["id"], "location_unavailable", "Location entities are unavailable or not readable by this user")
+        return
+    hidden = [entity for entity in ids if not async_should_expose(hass, "conversation", entity)]
+    if not hidden:
+        connection.send_result(msg["id"], {"exposed": []})
+        return
+    if not user.is_admin:
+        connection.send_error(msg["id"], "admin_required", "Ask a Home Assistant administrator to expose these entities to Assist")
+        return
+    if not msg["confirmed"]:
+        connection.send_result(msg["id"], {"confirmationRequired": hidden})
+        return
+    # Synchronous native policy updates, once, after explicit global-exposure confirmation.
+    for entity in hidden:
+        async_set_assistant_option(hass, "conversation", entity, "should_expose", True)
+    connection.send_result(msg["id"], {"exposed": hidden})
+
+
 def async_setup_exposure(hass):
-    for command in (_entities, _entity, _services, _call):
+    for command in (_entities, _entity, _services, _call, _check, _expose_locations):
         websocket_api.async_register_command(hass, command)

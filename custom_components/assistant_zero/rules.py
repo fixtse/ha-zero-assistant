@@ -22,6 +22,7 @@ from homeassistant.helpers.event import async_track_point_in_utc_time, async_tra
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
+from .exposure import permitted
 from .engine import RuleEngine, sensor_match
 from .location import location_entities, location_match
 
@@ -56,6 +57,14 @@ class Manager:
             return state.state if state else None
         self.engine = RuleEngine(lambda: dt_util.utcnow().timestamp(), self.persist, self.schedule, self.emit, read_state, lambda condition, latched: location_match(condition, hass.states.get, dt_util.utcnow().timestamp(), latched))
 
+    async def authorized(self, rule):
+        if rule.get("kind") != "alert":
+            return True
+        user = await self.hass.auth.async_get_user(rule.get("owner"))
+        condition = rule.get("condition") or {}
+        entities = [condition.get("entity_id"), condition.get("target_entity_id"), condition.get("sleep_entity")]
+        return all(permitted(self.hass, user, entity) for entity in entities if entity)
+
     async def persist(self, rules):
         await self.store.async_save({"rules": rules})
 
@@ -68,6 +77,10 @@ class Manager:
         task.add_done_callback(self.tasks.discard)
 
     async def dispatch(self, rule_id, operation):
+        rule = self.engine.rules.get(rule_id)
+        if rule and not await self.authorized(rule):
+            operation.close()
+            return
         await operation
         rule = self.engine.rules.get(rule_id)
         if rule and rule["status"] != "active":
@@ -88,6 +101,9 @@ class Manager:
         return async_track_point_in_utc_time(self.hass, due, datetime.fromtimestamp(at, timezone.utc))
 
     async def emit(self, event):
+        rule = self.engine.rules.get(event["id"])
+        if rule and not await self.authorized(rule):
+            return "ignored"
         try:
             async with async_get_clientsession(self.hass).post(self.config["callback_url"], json=event, headers={"Authorization": "Bearer " + self.config["callback_token"]}, timeout=aiohttp.ClientTimeout(total=10), allow_redirects=False) as response:
                 if response.status == 202:
@@ -118,6 +134,8 @@ class Manager:
             remove()
         if rule["status"] != "active" or rule["kind"] != "alert":
             return
+        if not await self.authorized(rule):
+            raise ValueError("Alert entities must be exposed to Assist and readable by the owner")
         condition = rule["condition"]
         if condition.get("source") == "weather":
             entity = self.hass.data[DATA_COMPONENT].get_entity(condition["entity_id"])
@@ -170,6 +188,8 @@ class Manager:
     async def put(self, owner, value):
         if not self.ready:
             raise ValueError("Rule scheduler is starting")
+        if value["status"] == "active" and not await self.authorized({**value, "owner": owner}):
+            raise ValueError("Alert entities must be exposed to Assist and readable by the owner")
         condition = value.get("condition")
         if value["kind"] == "alert":
             if not condition:
