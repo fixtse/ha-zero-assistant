@@ -1,22 +1,22 @@
 {
-  "title": "Zero Assistant",
+  "title": "ZeroSE",
   "config": {
     "step": {
       "user": {
-        "title": "Connect the discovered Zero instance",
+        "title": "Connect the discovered ZeroSE server",
         "description": "Home Assistant starts the connection. Select the HA user whose long-lived token Zero may use, then approve a Zero user or group in Zero. Both credentials and callbacks are configured automatically. Choose a Home Assistant URL reachable by Zero and your browser. Data, reminders and alerts need no physical voice device. Existing permissions and schedules are preserved.",
         "data": {
-          "url": "Zero server URL",
+          "url": "ZeroSE server URL",
           "home_assistant_url": "Home Assistant URL",
           "user_id": "Home Assistant user for Zero",
           "manual": "Use manual tokens instead"
         }
       },
       "reconfigure": {
-        "title": "Connect to Zero",
+        "title": "Connect to ZeroSE",
         "description": "Connect to Zero with dedicated voice and settings tokens, never the administrator API key. Data, reminders and alerts need no physical voice device. Credentials stay private.",
         "data": {
-          "url": "Zero server URL",
+          "url": "ZeroSE server URL",
           "token": "Voice token",
           "settings_token": "Settings management token",
           "callback_url": "Rule callback URL (optional)",
@@ -24,10 +24,10 @@
         }
       },
       "manual": {
-        "title": "Connect to Zero",
+        "title": "Connect to ZeroSE",
         "description": "Connect to Zero with dedicated voice and settings tokens, never the administrator API key. Data, reminders and alerts need no physical voice device. Credentials stay private.",
         "data": {
-          "url": "Zero server URL",
+          "url": "ZeroSE server URL",
           "token": "Voice token",
           "settings_token": "Settings management token",
           "callback_url": "Rule callback URL (optional)",
@@ -35,7 +35,7 @@
         }
       },
       "pair": {
-        "title": "Approve the connection in Zero",
+        "title": "Approve the connection in ZeroSE",
         "description": "Sign in to Zero, verify your Home Assistant address and select the enabled Zero user or group to connect. Group connections do not change private voice-user bindings. Return here after approval."
       }
     },
@@ -67,7 +67,7 @@
         }
       },
       "init": {
-        "title": "Zero Assistant",
+        "title": "ZeroSE",
         "menu_options": {
           "assistant": "Prompt and Home Assistant access",
           "delivery": "Reminder and alert delivery",

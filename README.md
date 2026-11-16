@@ -1,8 +1,8 @@
-# Zero Assistant
+# ZeroSE for Home Assistant
 
-<img src="custom_components/assistant_zero/brand/icon.png" width="128" alt="Zero Assistant Bridge">
+<img src="custom_components/assistant_zero/brand/icon.png" width="128" alt="ZeroSE">
 
-Use Zero through Home Assistant Assist, with shared settings, reminders, sensor alerts, and weather alerts. Zero keeps its own prompt, memory, and runtime.
+Use [ZeroSE](https://github.com/fixtse/ZeroSE) (“Zero”) through Home Assistant Assist, with shared settings, reminders, sensor alerts, and weather alerts. Zero keeps its own prompt, memory, and runtime.
 
 [![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=fixtse&repository=ha-zero-assistant&category=integration)
 
@@ -15,6 +15,8 @@ Install through HACS:
 [![Set up integration](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=assistant_zero)
 
 Start with the Zero instance discovered in **Settings → Devices & services**. Confirm the server URLs, choose the Home Assistant user, then sign in to Zero and approve the connection for an enabled private Zero profile. The configuration flow generates and exchanges both long-lived credentials automatically; no token copying is required. Manual token setup remains available. Under **Configure**, edit Zero’s shared prompt and Home Assistant permissions, using the same entity exposure settings as Assist. Reminder callback settings are in the same integration.
+
+Formerly shown as “Zero Assistant”. Version 1.11.0 only renames what Home Assistant displays; the `assistant_zero` domain, `conversation.zero` and existing entries are unchanged.
 
 Requires Home Assistant 2026.3 or newer. HACS must already be installed.
 

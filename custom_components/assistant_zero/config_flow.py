@@ -43,7 +43,7 @@ class ZeroConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._discovered_url = str(url).rstrip("/")
         except (TypeError, ValueError):
             return self.async_abort(reason="invalid_discovery")
-        self.context["title_placeholders"] = {"name": "Zero"}
+        self.context["title_placeholders"] = {"name": "ZeroSE"}
         return await self.async_step_user()
 
     async def async_step_import(self, data):
@@ -57,7 +57,7 @@ class ZeroConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if additions:
                 self.hass.config_entries.async_update_entry(existing, data={**existing.data, **additions})
         self._abort_if_unique_id_configured()
-        return self.async_create_entry(title="Zero", data=data)
+        return self.async_create_entry(title="ZeroSE", data=data)
 
     async def async_step_user(self, user_input=None):
         errors = {}
@@ -137,7 +137,7 @@ class ZeroConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 "id": self._pairing["id"], "secret": self._pairing_secret, "homeAssistantToken": token,
             })
             connection = {**self._connection, **{key: credentials[key] for key in ("token", "settings_token", "callback_token", "callback_url")}}
-            return self.async_create_entry(title="Zero", data=connection)
+            return self.async_create_entry(title="ZeroSE", data=connection)
         except (aiohttp.ClientError, TimeoutError, ValueError, KeyError):
             if refresh is not None:
                 self.hass.auth.async_remove_refresh_token(refresh)
@@ -154,7 +154,7 @@ class ZeroConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 await self.async_set_unique_id(DOMAIN)
                 self._abort_if_unique_id_configured()
-                return self.async_create_entry(title="Zero", data=user_input)
+                return self.async_create_entry(title="ZeroSE", data=user_input)
         return self.async_show_form(step_id="manual", data_schema=connection_schema(getattr(self, "_discovered_url", None)), errors=errors)
 
     async def async_step_reconfigure(self, user_input=None):

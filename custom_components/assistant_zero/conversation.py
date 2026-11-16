@@ -120,7 +120,7 @@ class ZeroConversation(conversation.ConversationEntity):
         except AccessDenied:
             response.async_set_error(
                 intent.IntentResponseErrorCode.UNKNOWN,
-                "Tu usuario de Home Assistant no está vinculado a un usuario activo de Zero. Configura el vínculo en la integración Zero Assistant.",
+                "Tu usuario de Home Assistant no está vinculado a un usuario activo de Zero. Configura el vínculo en la integración ZeroSE.",
             )
         except (BridgeError, TimeoutError, aiohttp.ClientError, ValueError, KeyError, TypeError):
             response.async_set_error(
